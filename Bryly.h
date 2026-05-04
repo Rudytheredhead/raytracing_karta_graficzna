@@ -26,6 +26,8 @@ struct Zrodlo_swiatla{
     sf::Vector3f srodek;
     sf::Vector3f kolor;
     float moc_emisji;
+    sf::Vector3f kierunek_swiecena{};
+    float kat_swiecenia = -2.0f; //dla 360 
 };
 
 

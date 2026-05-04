@@ -27,26 +27,26 @@ int main() {
         0.0f,
         0.0f
     };
-    Kula_struct kula2{sf::Vector3f(5.0f,0.0f,-5.0f), 
+    Kula_struct kula2{sf::Vector3f(6.0f,0.0f,-5.0f), 
         2.0f,
         sf::Vector3f(1.0f,0.0f,0.0f),
-        1.0f,
+        0.95f,
         0.0f,
         0.0f,
         0.0f
 
     };
-    Kula_struct czolowka{sf::Vector3f(0.0f,-0.5f,0.0f), 
-        0.2f,
-        sf::Vector3f(1.0f,1.0f,1.0f),
-        0.0f,
-        0.0f,
-        0.0f,
-        1.0f
-    };
+    // Kula_struct czolowka{sf::Vector3f(0.0f,-0.5f,0.0f), 
+    //     0.2f,
+    //     sf::Vector3f(1.0f,1.0f,1.0f),
+    //     0.0f,
+    //     0.0f,
+    //     0.0f,
+    //     1.0f
+    // };
     kule.push_back(kula);
     kule.push_back(kula2);
-    kule.push_back(czolowka);
+    //kule.push_back(czolowka);
 
     std::vector<Zrodlo_swiatla> zrodla_swiatla;
 
@@ -54,11 +54,14 @@ int main() {
         sf::Vector3f(1.0f,1.0f,1.0f),
         1.0f
     };
+    czolowka_.kat_swiecenia = 0.8f;
 
     Zrodlo_swiatla lampa{sf::Vector3f(0.0f,-10.0f,-5.0f),
         sf::Vector3f(1.0f,1.0f,1.0f),
-        10.0f
+        30.0f
     };
+    lampa.kierunek_swiecena = sf::Vector3f(0.0f,1.0f,0.0f);
+    lampa.kat_swiecenia = 0.5f;
     zrodla_swiatla.push_back(czolowka_);
     zrodla_swiatla.push_back(lampa);
 
@@ -76,6 +79,7 @@ int main() {
     float obrot_na_boki=0.0f;
     float obrot_gora_dol = 0.0f;
     sf::Mouse::setPosition(sf::Vector2i(DLUGOSC/2, DLUGOSC/2), window);
+    czolowka_.kierunek_swiecena = cel.zwroc_vector2f();
 
 
     
@@ -94,6 +98,12 @@ int main() {
     
     if (!shader_obliczenia.loadFromFile("fizyka.frag", sf::Shader::Fragment)) {
         std::cerr << "Nie udalo sie zaladowac shadera!" << std::endl;
+        return -1;
+    }
+
+    sf::Shader shader_postprocess;
+    if (!shader_postprocess.loadFromFile("post_process.frag", sf::Shader::Fragment)) {
+        std::cerr << "Nie udalo sie zaladowac shadera postprocess.frag!" << std::endl;
         return -1;
     }
 
@@ -121,6 +131,9 @@ int main() {
         shader_obliczenia.setUniform(prefix+"srodek", zrodla_swiatla[i].srodek);
         shader_obliczenia.setUniform(prefix+"moc_emisji", zrodla_swiatla[i].moc_emisji);
         shader_obliczenia.setUniform(prefix+"kolor", zrodla_swiatla[i].kolor);
+        shader_obliczenia.setUniform(prefix+"kierunek_swiecenia", zrodla_swiatla[i].kierunek_swiecena);
+        shader_obliczenia.setUniform(prefix+"kat_swiecenia", zrodla_swiatla[i].kat_swiecenia);
+
 
 
     }
@@ -132,6 +145,15 @@ int main() {
     shader_obliczenia.setUniform("U", uklad.U.zwroc_vector2f());
     shader_obliczenia.setUniform("V", uklad.V.zwroc_vector2f());
   
+
+    // Ustawiamy zmienne uniform dla drugiego shadera
+    shader_postprocess.setUniform("u_tekstura", sf::Shader::CurrentTexture);
+    shader_postprocess.setUniform("u_resolution", sf::Vector2f(window.getSize()));
+    // Tworzymy niewidzialne płótno, na którym będzie "malował" pierwszy shader
+    sf::RenderTexture plotno_robocze;
+    plotno_robocze.create(DLUGOSC, DLUGOSC);
+    sf::Sprite sprite_postprocess(plotno_robocze.getTexture());
+    
 
 
 
@@ -151,6 +173,7 @@ int main() {
 
 
         Wektor3D przod = cel - kamera;
+        przod = przod -  Wektor3D(0.0f,przod.y(), 0.0f);
         przod.normalizuj();
         Wektor3D prawo = przod%gora;
         prawo.normalizuj();
@@ -183,6 +206,7 @@ int main() {
             -std::sin(obrot_gora_dol),
             -std::cos(obrot_gora_dol)*std::cos(obrot_na_boki));
         cel = kamera +kierunek_kamery;
+        
         dx=0;
         dy =0;
 
@@ -202,25 +226,35 @@ int main() {
         shader_obliczenia.setUniform("kamera",kamera.zwroc_vector2f());
 
         Wektor3D pozycja_czolowki = kamera + 0.5f*uklad.V;
-        Wektor3D pozycja_czolowki_swiatla = pozycja_czolowki - 0.5f*uklad.W;
+        Wektor3D pozycja_czolowki_swiatla = pozycja_czolowki + 0.5f*uklad.W;
         // std::cout<<pozycja_czolowki<<std::endl<<uklad.V<<std::endl;
 
 
 
         std::string prefix = "swiatla[0].";
         shader_obliczenia.setUniform(prefix+"srodek", pozycja_czolowki_swiatla.zwroc_vector2f());
-        prefix = "kule["+std::to_string(kule.size()-1)+"].";
-        shader_obliczenia.setUniform(prefix+"srodek", pozycja_czolowki.zwroc_vector2f());
+        shader_obliczenia.setUniform(prefix+"kierunek_swiecenia", -uklad.W.zwroc_vector2f());
+
+        // prefix = "kule["+std::to_string(kule.size()-1)+"].";
+        // shader_obliczenia.setUniform(prefix+"srodek", pozycja_czolowki.zwroc_vector2f());
 
 
 
+        plotno_robocze.clear(sf::Color(0,0,0,0));
+        sf::RenderStates stany_obliczen;
+        stany_obliczen.shader = &shader_obliczenia;
+        stany_obliczen.blendMode = sf::BlendNone;
+        plotno_robocze.draw(ekran, stany_obliczen);
+        plotno_robocze.display();
+    
 
 
         // 4. Renderowanie (Czyszczenie -> Rysowanie -> Wyświetlanie)
         window.clear(sf::Color::Black); 
         
         // Tutaj miejsce na rysowanie obiektów (window.draw...)
-        window.draw(ekran ,&shader_obliczenia);
+        window.draw(sprite_postprocess ,&shader_postprocess);
+      
 
         window.display();
     }
