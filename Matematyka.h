@@ -10,3 +10,5 @@ struct Uklad_wspolrzednych{
 };
 Uklad_wspolrzednych obliczanie_ukladu_wspolrzednych( const Wektor3D& kamera,const  Wektor3D &cel, const Wektor3D & gora);
 Wektor3D oblicz_kierunek_promienia(float grid_x, float grid_y,float odleglosc_od_ekranu, Uklad_wspolrzednych &uklad );
+bool sprawdz_kolizje(const Wektor3D& nowa_pozycja, float promien_gracza, const std::vector<Kula_struct>& kule);
+void Kolizje_z_kulami(Wektor3D& posPostaci, float promienPostaci,const std::vector<Kula_struct>& kule);

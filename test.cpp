@@ -195,38 +195,52 @@ int main() {
         przod.normalizuj();
         Wektor3D prawo = przod%gora;
         prawo.normalizuj();
+        Wektor3D przesuniecie(0.0f,0.0f,0.0f);
         
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-            kamera = kamera + predkosc_chodzenia*deltaTime*prawo;
+            przesuniecie = przesuniecie + predkosc_chodzenia*deltaTime*prawo;
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-            kamera = kamera - predkosc_chodzenia*deltaTime*prawo;
+            przesuniecie = przesuniecie- predkosc_chodzenia*deltaTime*prawo;
         }        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-            kamera = kamera + predkosc_chodzenia*deltaTime*przod;
+            przesuniecie = przesuniecie + predkosc_chodzenia*deltaTime*przod;
         }        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-            kamera = kamera - predkosc_chodzenia*deltaTime*przod;
+            przesuniecie = przesuniecie - predkosc_chodzenia*deltaTime*przod;
 
         }
         
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czy_stoi_na_ziemi){
-            predkosc_wektor = predkosc_wektor + Wektor3D(0.0f,-3.0f,0.0f);
+            predkosc_wektor = predkosc_wektor + Wektor3D(0.0f,-10.0f,0.0f);
             czy_stoi_na_ziemi = false;
         }
         if (!czy_stoi_na_ziemi){
             predkosc_wektor = predkosc_wektor + (deltaTime*grawitacja);
+            
+            
         }
+        czy_stoi_na_ziemi = false;
+        
 
-        kamera = kamera + (deltaTime*predkosc_wektor);
+        przesuniecie = przesuniecie + (deltaTime*predkosc_wektor);
+        kamera = kamera + przesuniecie;
+        
+        // Jeżeli gracz próbuje się poruszyć
+        if (przesuniecie.modul2() > 0.0f) {
+            float promien_postaci = 0.5f;
+            Kolizje_z_kulami(kamera, promien_postaci, kule);
+                
+             
+        }
         
 
         if (kamera.y()>0.0f){
-            std::cout<<kamera<<std::endl;
+            
             kamera.set_y(0.0f);
             predkosc_wektor.set_y(0.0f);
             czy_stoi_na_ziemi = true;
-            std::cout<<kamera<<std::endl;
+            
         }
-        
+      
 
 
 
