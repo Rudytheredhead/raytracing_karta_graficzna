@@ -58,3 +58,13 @@ void Wektor3D::normalizuj(){
     y_/= dl;
     z_/= dl;
 }
+
+void Wektor3D::set_x(float x){
+    x_ = x;
+}
+void Wektor3D::set_y(float y){
+    y_ = y;
+}
+void Wektor3D::set_z(float z){
+    z_ = z;
+}

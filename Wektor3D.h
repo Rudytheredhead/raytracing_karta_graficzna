@@ -23,6 +23,10 @@ public:
     friend Wektor3D operator * (float scalar, const Wektor3D& wektor);
     void normalizuj();
     sf::Vector3f zwroc_vector2f(){return sf::Vector3f(x_,y_,z_);}
+    void set_x(float x);
+    void set_y(float y);
+    void set_z(float z);
+
     
 };
 

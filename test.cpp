@@ -6,6 +6,7 @@
 #include <memory>
 #include<cmath>
 #include <iostream>
+#include <chrono>
 
 
 
@@ -67,19 +68,26 @@ int main() {
 
 
 
+
     Wektor3D kamera(0.0f,0.0f,0.0f);
     Wektor3D cel(0.0f,0.0f,-1.0f);
     Wektor3D gora(0.0f,1.0f,0.0f);
     Wektor3D swiatlo(0.0f,1.0f,2.0f);
+    Wektor3D predkosc_wektor (0.0f,0.0f,0.0f);
+    bool czy_stoi_na_ziemi = true;
     float odleglosc_od_ekranu =1.0f;
-    float predkosc = 0.1f;
+    float predkosc_chodzenia = 5.0f;
     float sens_myszki = 0.005f;
     int dx=0;
     int dy=0;
     float obrot_na_boki=0.0f;
     float obrot_gora_dol = 0.0f;
+    Wektor3D grawitacja(0.0f,9.81f,0.0f);
     sf::Mouse::setPosition(sf::Vector2i(DLUGOSC/2, DLUGOSC/2), window);
     czolowka_.kierunek_swiecena = cel.zwroc_vector2f();
+
+    auto poprzedniCzas = std::chrono::high_resolution_clock::now();
+    float deltaTime = 0.0f;
 
 
     
@@ -170,28 +178,58 @@ int main() {
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) window.close();
 
         }
+        //obliczananie delta_time zeby predkosci nie zmienialy sie przy zmiuennej ilosci klatek
+
+        auto obecnyCzas = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> roznica = obecnyCzas - poprzedniCzas;
+        deltaTime = roznica.count();
+        poprzedniCzas = obecnyCzas;
 
 
-        Wektor3D przod = cel - kamera;
-        przod = przod -  Wektor3D(0.0f,przod.y(), 0.0f);
+        Wektor3D przod(
+            -std::sin(obrot_na_boki),
+            0.0f,
+            -std::cos(obrot_na_boki)
+        );
+        
         przod.normalizuj();
         Wektor3D prawo = przod%gora;
         prawo.normalizuj();
         
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-            kamera = kamera + predkosc*prawo;
-            cel = cel +predkosc*prawo;
+            kamera = kamera + predkosc_chodzenia*deltaTime*prawo;
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-            kamera = kamera - predkosc*prawo;
-            cel = cel - predkosc*prawo;
+            kamera = kamera - predkosc_chodzenia*deltaTime*prawo;
         }        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-            kamera = kamera + predkosc*przod;
-            cel = cel +predkosc*przod;
+            kamera = kamera + predkosc_chodzenia*deltaTime*przod;
         }        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-            kamera = kamera - predkosc*przod;
-            cel = cel - predkosc*przod;
+            kamera = kamera - predkosc_chodzenia*deltaTime*przod;
+
         }
+        
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czy_stoi_na_ziemi){
+            predkosc_wektor = predkosc_wektor + Wektor3D(0.0f,-3.0f,0.0f);
+            czy_stoi_na_ziemi = false;
+        }
+        if (!czy_stoi_na_ziemi){
+            predkosc_wektor = predkosc_wektor + (deltaTime*grawitacja);
+        }
+
+        kamera = kamera + (deltaTime*predkosc_wektor);
+        
+
+        if (kamera.y()>0.0f){
+            std::cout<<kamera<<std::endl;
+            kamera.set_y(0.0f);
+            predkosc_wektor.set_y(0.0f);
+            czy_stoi_na_ziemi = true;
+            std::cout<<kamera<<std::endl;
+        }
+        
+
+
+
         if (window.hasFocus()){
             sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
             dx = -(mouse_pos.x-DLUGOSC/2);
@@ -209,6 +247,12 @@ int main() {
         
         dx=0;
         dy =0;
+
+
+
+
+
+
 
 
 
@@ -248,7 +292,7 @@ int main() {
         plotno_robocze.display();
     
 
-
+    
         // 4. Renderowanie (Czyszczenie -> Rysowanie -> Wyświetlanie)
         window.clear(sf::Color::Black); 
         
