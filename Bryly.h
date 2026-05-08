@@ -21,6 +21,7 @@ struct Kula_struct{
     float przezroczystosc;
     float wspolczynnik_zalamania;
     float moc_emisji;
+    float szorstkosc = 0.0f;
 };
 struct Zrodlo_swiatla{
     sf::Vector3f srodek;

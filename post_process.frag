@@ -29,6 +29,8 @@ void main(){
     kolor_ostateczny += rozmyty_blask*kolor_swiatla;
 
     outColor = vec4(kolor_ostateczny,1.0);
-    //outColor = vec4(1.0);
+    float red = pixel_bazowy.a;
+    //outColor =  vec4 (red, 0.0,0.0,1.0);
+    //outColor = vec4(0.0);
 
 }

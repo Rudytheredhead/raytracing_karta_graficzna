@@ -26,6 +26,7 @@ struct Kula{
     float przezroczystosc;
     float wspolczynnik_zalamania;
     float moc_emisji;
+    float szorstkosc;
 };
 
 
@@ -48,6 +49,33 @@ struct Wyniki_zdarzenia{
     float moc_emisji;
 
 };
+float seed;
+
+float rand() {
+    // Magiczne liczby do pseudolosowości
+    seed = fract(sin(seed * 91.3458) * 47453.5453);
+    return seed;
+}
+vec3 losowy_punkt_na_sferze() {
+    // 1. Pobieramy dwie niezależne liczby losowe z zakresu [0, 1]
+    float u = rand(); // u to ziarno dla pierwszej wartości
+    float v = rand(); // v to ziarno dla drugiej wartości
+
+    // 2. Mapujemy u na kąt azymutu (0 do 2*PI)
+    float phi = u * 6.28318530718; // 2.0 * PI
+
+    // 3. Mapujemy v na kąt nachylenia (od bieguna do bieguna)
+    // Używamy acos(2.0 * v - 1.0), aby punkty rozłożyły się równomiernie na powierzchni
+    float cosTheta = 2.0 * v - 1.0;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+    // 4. Konwersja ze współrzędnych sferycznych na kartezjańskie (x, y, z)
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    float z = cosTheta;
+
+    return vec3(x, y, z);
+}
 
 bool sprawdz_trafienie(Promien promien,Kula kula, inout Wyniki_zdarzenia wyniki, float t_min, float t_max){
     vec3 OC = promien.poczatek - kula.srodek;
@@ -78,7 +106,11 @@ bool sprawdz_trafienie(Promien promien,Kula kula, inout Wyniki_zdarzenia wyniki,
     
 
     Promien promien_odbity;
-    promien_odbity.kierunek = normalize(reflect(promien.kierunek,wyniki.wektor_normalny));
+    vec3 idealne_odbice = normalize(reflect(promien.kierunek,wyniki.wektor_normalny));
+    vec3 kierunek_odbicia = normalize(idealne_odbice + losowy_punkt_na_sferze()*kula.szorstkosc);
+    if (dot(kierunek_odbicia, wyniki.wektor_normalny) > 0.0) {
+        promien_odbity.kierunek = kierunek_odbicia;
+    }
     promien_odbity.poczatek = wyniki.punkt_zderzenia;
 
     wyniki.promien_odbity = promien_odbity;
@@ -103,25 +135,15 @@ vec3 oblicz_kierunek_promienia(vec2 st, float odleglosc_od_ekranu, inout Uklad_w
 
 
 
-float oblicz_moc_czo(vec3 kierunek_promienia, vec3 przod){
-    float kat_czolowki = dot(kierunek_promienia, przod);
-    if (kat_czolowki>szerokosc_czolowki){
-        float wynik = (kat_czolowki-szerokosc_czolowki)/(1.0-szerokosc_czolowki);
-        return wynik;
-    }
-    else return 0.0;
-}
-float cieniownie_powieszchni(inout Wyniki_zdarzenia wyniki, vec3 kierunek_promienia){
-    float natezenie = dot(wyniki.wektor_normalny,kierunek_promienia);
-    natezenie = max(0.0, natezenie);
-    return natezenie;
-}
+
 
 vec4 oblicz_oswietlenie(Wyniki_zdarzenia zderzenie,Zrodlo_swiatla swiatla[MAX_SWIATEL], int ilosc_swiatel, Kula kule[MAX_KUL],int ilosc_kul){
     vec3 calkowite_energia_swiatla = vec3(0.0,0.0,0.0);
+    float radius_swiatla = 0.5;
 
     for (int i =0; i<ilosc_swiatel; i++){
-        vec3 droga_swiatla = swiatla[i].srodek - zderzenie.punkt_zderzenia;
+        vec3 srodek_swiatala_monte_carlo = swiatla[i].srodek + losowy_punkt_na_sferze()*radius_swiatla;
+        vec3 droga_swiatla = srodek_swiatala_monte_carlo- zderzenie.punkt_zderzenia;
         float odleglosc_od_swiatla = length(droga_swiatla);
         vec3 kierunek_do_swiatla = normalize(droga_swiatla);
         float moc_swiatla_od_kata = 1.0;
@@ -180,6 +202,10 @@ uniform vec2 u_resolution;
 uniform int ilosc_swiatel;
 uniform Zrodlo_swiatla swiatla[MAX_SWIATEL];
 
+uniform sampler2D poprzednia_klatka;
+uniform int licznik_klatek;
+
+
 out vec4 outColor;
 
 
@@ -194,6 +220,8 @@ void main(){
     wyniki.t = 9999.0;
     Promien promien_swiatla;
     float t_min = 0.001;
+
+    seed = dot(st.xy, vec2(12.9898,78.233))*licznik_klatek;
 
     
 
@@ -288,7 +316,13 @@ void main(){
  
 
     }
-    outColor = vec4(kolor_powieszchni,maska_blasku);
+   
+    vec4 obecny_kolor = vec4(kolor_powieszchni,maska_blasku);
+
+    vec4 poprzedni_kolor = texture(poprzednia_klatka,st);
+    //outColor = obecny_kolor;
+    outColor= mix(poprzedni_kolor,obecny_kolor, 1.0 / licznik_klatek);
+    //outColor = vec4 (1.0,0.0,0.0,0.5);
     
 
 

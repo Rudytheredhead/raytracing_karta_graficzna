@@ -16,7 +16,7 @@ int main() {
     window.setFramerateLimit(60); 
     window.setMouseCursorVisible(false);
 
-    sf::RectangleShape ekran(sf::Vector2f(window.getSize()));
+    
 
 
     std::vector<Kula_struct> kule;
@@ -28,6 +28,7 @@ int main() {
         0.0f,
         0.0f
     };
+    kula.szorstkosc =0.1f;
     Kula_struct kula2{sf::Vector3f(6.0f,0.0f,-5.0f), 
         2.0f,
         sf::Vector3f(1.0f,0.0f,0.0f),
@@ -37,6 +38,7 @@ int main() {
         0.0f
 
     };
+    kula2.szorstkosc=0.5f;
     // Kula_struct czolowka{sf::Vector3f(0.0f,-0.5f,0.0f), 
     //     0.2f,
     //     sf::Vector3f(1.0f,1.0f,1.0f),
@@ -132,6 +134,8 @@ int main() {
         shader_obliczenia.setUniform(prefix+"moc_emisji", kule[i].moc_emisji);
         shader_obliczenia.setUniform(prefix+"przezroczystosc", kule[i].przezroczystosc);
         shader_obliczenia.setUniform(prefix+"wspolczynnik_zalamania", kule[i].wspolczynnik_zalamania);
+        shader_obliczenia.setUniform(prefix+"szorstkosc", kule[i].szorstkosc);
+
 
     }
     for(int i =0; i<zrodla_swiatla.size();i++){
@@ -155,12 +159,19 @@ int main() {
   
 
     // Ustawiamy zmienne uniform dla drugiego shadera
-    shader_postprocess.setUniform("u_tekstura", sf::Shader::CurrentTexture);
+
     shader_postprocess.setUniform("u_resolution", sf::Vector2f(window.getSize()));
-    // Tworzymy niewidzialne płótno, na którym będzie "malował" pierwszy shader
-    sf::RenderTexture plotno_robocze;
-    plotno_robocze.create(DLUGOSC, DLUGOSC);
-    sf::Sprite sprite_postprocess(plotno_robocze.getTexture());
+
+    //do monte carlo
+    sf::RenderTexture textura_A;
+    sf::RenderTexture textura_B;
+    textura_A.create(DLUGOSC,DLUGOSC);
+    textura_B.create(DLUGOSC,DLUGOSC);
+    int licznik_kaltek =1;
+    bool czy_wymagany_reset_klatek = false;
+
+
+
     
 
 
@@ -228,18 +239,27 @@ int main() {
         if (przesuniecie.modul2() > 0.0f) {
             float promien_postaci = 0.5f;
             Kolizje_z_kulami(kamera, promien_postaci, kule);
-                
-             
-        }
-        
+            //std::cout<<"ruszam sie"<<przesuniecie<<std::endl;
 
+            czy_wymagany_reset_klatek = true;
+  
+        }
         if (kamera.y()>0.0f){
             
             kamera.set_y(0.0f);
             predkosc_wektor.set_y(0.0f);
             czy_stoi_na_ziemi = true;
+            if (przesuniecie.x() == 0.0f && przesuniecie.z()==0.0f){
+                czy_wymagany_reset_klatek = false;
+                std::cout<<"zeruje"<<std::endl;
+            }
+        
             
         }
+
+        
+
+
       
 
 
@@ -259,6 +279,13 @@ int main() {
             -std::cos(obrot_gora_dol)*std::cos(obrot_na_boki));
         cel = kamera +kierunek_kamery;
         
+
+        if(czy_wymagany_reset_klatek || dx!=0 || dy != 0){
+            licznik_kaltek = 1;
+            textura_A.clear(sf::Color::Black);
+            textura_B.clear(sf::Color::Black);
+            czy_wymagany_reset_klatek = false;
+        }
         dx=0;
         dy =0;
 
@@ -296,22 +323,33 @@ int main() {
         // prefix = "kule["+std::to_string(kule.size()-1)+"].";
         // shader_obliczenia.setUniform(prefix+"srodek", pozycja_czolowki.zwroc_vector2f());
 
+        sf::RenderTexture &tex_do_zapisu = licznik_kaltek%2==1 ? textura_A : textura_B;
+        sf::RenderTexture &tex_do_odczytu=licznik_kaltek%2==0 ? textura_A : textura_B;
+        sf::Sprite spite_obliczenia(tex_do_odczytu.getTexture());
 
+        shader_obliczenia.setUniform("poprzednia_klatka", sf::Shader::CurrentTexture);
+        shader_obliczenia.setUniform("licznik_klatek", licznik_kaltek);
 
-        plotno_robocze.clear(sf::Color(0,0,0,0));
         sf::RenderStates stany_obliczen;
         stany_obliczen.shader = &shader_obliczenia;
         stany_obliczen.blendMode = sf::BlendNone;
-        plotno_robocze.draw(ekran, stany_obliczen);
-        plotno_robocze.display();
-    
 
-    
+        tex_do_zapisu.clear(sf::Color::Transparent);
+        tex_do_zapisu.draw(spite_obliczenia, stany_obliczen);
+        tex_do_zapisu.display();
+        licznik_kaltek ++;
+        std::cout<<licznik_kaltek<<std::endl;
+
+        
+
+        sf::Sprite sprite_postprocess(tex_do_zapisu.getTexture());
+        shader_postprocess.setUniform("u_tekstura", sf::Shader::CurrentTexture);
+        
         // 4. Renderowanie (Czyszczenie -> Rysowanie -> Wyświetlanie)
         window.clear(sf::Color::Black); 
         
         // Tutaj miejsce na rysowanie obiektów (window.draw...)
-        window.draw(sprite_postprocess ,&shader_postprocess);
+        window.draw(sprite_postprocess,&shader_postprocess);
       
 
         window.display();
