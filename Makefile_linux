@@ -1,2 +1,34 @@
-raytracing: test.cpp Bryly.cpp Wektor3D.cpp Matematyka.cpp
-	g++ test.cpp Bryly.cpp Wektor3D.cpp Matematyka.cpp -o raytracing -lsfml-graphics -lsfml-window -lsfml-system -O3
+# Kompilator
+CXX = g++
+
+# Flagi kompilatora: 
+# -g włącza symbole debugowania (niezbędne!)
+# -Wall włącza ostrzeżenia o potencjalnych błędach w kodzie
+CXXFLAGS = -g -Wall
+
+# Biblioteki do zlinkowania (SFML)
+LIBS = -lsfml-graphics -lsfml-window -lsfml-system
+
+# Lista plików źródłowych
+SRCS = test.cpp Bryly.cpp Wektor3D.cpp Matematyka.cpp
+
+# Automatyczna zamiana rozszerzeń z .cpp na .o (pliki obiektowe)
+OBJS = $(SRCS:.cpp=.o)
+
+# Nazwa pliku wynikowego
+TARGET = raytracing
+
+# Domyślny cel kompilacji
+all: $(TARGET)
+
+# Łączenie plików obiektowych w plik wykonywalny
+$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+
+# Reguła kompilacji poszczególnych plików .cpp do plików .o
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Reguła do czyszczenia projektu ze skompilowanych plików
+clean:
+	rm -f $(OBJS) $(TARGET)
