@@ -1,2 +1,3 @@
 raytracing.exe
-raytracing.exe
+raytracing
+*.o
